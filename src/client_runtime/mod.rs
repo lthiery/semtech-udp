@@ -234,12 +234,16 @@ impl Tx {
                         up.set_gateway_mac(self.mac);
                         match up {
                             Up::PushData(ref mut push_data) => {
+                                push_data.gateway_mac = self.mac;
                                 push_data.random_token = rand::random()
                             }
                             Up::PullData(ref mut pull_data) => {
+                                pull_data.gateway_mac = self.mac;
                                 pull_data.random_token = rand::random()
                             }
-                            Up::TxAck(_) => (),
+                            Up::TxAck(ref mut tx_ack) => {
+                                tx_ack.gateway_mac = self.mac;
+                            },
                         }
                     }
                     Packet::Down(_) => panic!("Should not be sending any down packets"),
