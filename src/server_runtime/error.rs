@@ -14,8 +14,10 @@ pub enum Error {
     UnknownMac,
     #[error("Io Error from using UDP: {0}")]
     UdpError(#[from] std::io::Error),
-    #[error("ClientEventQueue Full: {0}")]
-    ClientEventQueueFull(#[from] Box<mpsc::error::SendError<Event>>),
+    // a bounded send().await only errors when the receiver is dropped, so
+    // this signals runtime shutdown, not backpressure
+    #[error("client event queue closed: {0}")]
+    ClientEventQueueClosed(#[from] Box<mpsc::error::SendError<Event>>),
     #[error("Internal queue closed or full")]
     InternalQueueClosedOrFull,
     #[error("Semtech UDP error: {0}")]
@@ -41,7 +43,7 @@ impl From<tokio::time::error::Elapsed> for Error {
 
 impl From<mpsc::error::SendError<Event>> for Error {
     fn from(err: mpsc::error::SendError<Event>) -> Error {
-        Error::ClientEventQueueFull(err.into())
+        Error::ClientEventQueueClosed(err.into())
     }
 }
 

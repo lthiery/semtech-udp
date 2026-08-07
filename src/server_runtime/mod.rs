@@ -250,20 +250,22 @@ impl UdpRuntime {
         // udp_rx reads from the UDP port
         // and sends packets to relevant parties
         tokio::spawn(async move {
-            if let Err(e) = udp_rx.run().await {
-                // we panic here because the ony error case here
-                // if we lost the local socket somehow
-                panic!("UdpRx threw error: {e:?}")
+            match udp_rx.run().await {
+                // the internal channel closes when udp_tx winds down after the
+                // UdpRuntime is dropped; exit quietly instead of panicking
+                Ok(()) | Err(Error::InternalQueueClosedOrFull) => (),
+                Err(e) => panic!("UdpRx threw error: {e:?}"),
             }
         });
 
         // udp_tx writes to the UDP port and maintains
         // gateway to IP map
         tokio::spawn(async move {
-            if let Err(e) = udp_tx.run().await {
-                // we panic here because the ony error case here
-                // if we lost the local socket somehow
-                panic!("UdpTx threw error: {e:?}")
+            match udp_tx.run().await {
+                // a client event send only fails when the receiver is gone,
+                // which happens when the UdpRuntime is dropped; exit quietly
+                Ok(()) | Err(Error::ClientEventQueueClosed(_)) => (),
+                Err(e) => panic!("UdpTx threw error: {e:?}"),
             }
         });
 
